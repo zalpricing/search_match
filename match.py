@@ -1,4 +1,4 @@
-# Fancy Matcher 1.0 - Sebastian Oehlschläger, Torsten Kunz
+# Fancy Matcher 1.2 - Sebastian Oehlschläger, Torsten Kunz
 
 import csv
 import sys
@@ -47,38 +47,65 @@ def create_searchword_list(csvfile):
 #          print(searchword_list)
      return searchword_list
 
-###  fuzzy string comparison
- 
-##def string_comparison(search, lookup):
-##     match_dict = {}
-##     for searchword in search:
-##          for key, value in lookup.items():
-##               match_ratio = difflib.SequenceMatcher(None, searchword[0], key).ratio()
-##               if match_ratio > 0.9:
-##                    key_value = {searchword[0]:match_ratio}
-##                    match_dict.update(key_value)
-##          return match_dict
-
-### vlookup
-
 def vlookup(lookup_list, lookup_dictionary):
+     print(lookup_dictionary)
      for searchphrase in lookup_list:
           output = []
           for searchword in searchphrase[0]:
-               if searchword in lookup_dictionary:
-                    for brand in searchphrase[0]:
-                         if brand in lookup_dictionary[searchword]:
-                              output = []
-                              output.append([searchphrase[0], searchphrase[1], searchword, brand, lookup_dictionary[searchword]])
-                              write_to_csv(output)
-               else:
-                    x = 5                 
+               # print("searchword: " + searchword)
+               for key, value in lookup_dictionary.items():
+                    if searchword in key:
+                         for brand in searchphrase[0]:
+                              if brand in value[0]:
+                                   # print("MATCH: " + brand + " " + searchword)
+                                   output = []
+                                   output.append([searchphrase[0], searchphrase[1], searchword, brand, value])
+                                   write_to_csv(output)
+                    else:
+                         x = 5                 
+
+
+## vlookup incl. string comparison
+
+def vlookup_similar(lookup_list, lookup_dictionary):
+     print(lookup_dictionary)
+     for searchphrase in lookup_list:
+          output = []
+          for searchword in searchphrase[0]:
+               for key, value in lookup_dictionary.items():
+                    #### Variante 1: Searchword vs. Whole Product Name
+                    # name_match_ratio = difflib.SequenceMatcher(None, searchword, key).ratio()
+                    # print("Search: " + searchword + " | Key: " +  key + " | Ratio = " + str(name_match_ratio))
+                    # if name_match_ratio > 0.4:
+                    #### Variante 2: Whole Product Name contains Searchword
+                    # if searchword in key:
+                    #### Variante 3: Searchword vs. each word of Product Name
+                    split_name = []
+                    split_name = str.split(key)
+                    for partial_name in split_name:
+                         name_match_ratio = difflib.SequenceMatcher(None, searchword, partial_name).ratio()
+                         if name_match_ratio > 0.75:
+                         ### Ende Variante 3
+                              for brand in searchphrase[0]:
+                                   split_brand = []
+                                   split_brand = str.split(value[0])
+                                   for partial_brand in split_brand:
+                                        brand_match_ratio = difflib.SequenceMatcher(None, brand, partial_brand).ratio()
+                                        # print("Search: " + searchword + " | Key: " +  key + " | Ratio = " + str(match_ratio))
+                                        if brand_match_ratio > 0.75:
+                                             # print("MATCH: " + brand + " " + searchword)
+                                             output = []
+                                             output.append([searchphrase[0], searchphrase[1], searchword, brand, value, name_match_ratio, brand_match_ratio])
+                                             print(output)
+                                             write_to_csv(output)
+                              else:
+                                   x = 5                 
+
 
 start = datetime.now()
 lookup_dict = create_dictionary_from_csv(lookup_csv)
 searchword_list = create_searchword_list(to_match_csv)
-vlookup(searchword_list, lookup_dict)
+vlookup_similar(searchword_list, lookup_dict)
 stop = datetime.now()
 result = stop - start
 print(result)
-
