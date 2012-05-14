@@ -36,8 +36,7 @@ def create_searchword_list(csvfile):
      for line in reader:
           split_phrase = []
           split_phrase = [str.split(line[0])]
-          split_phrase.append(line[1])
-          searchword_list.append(split_phrase)
+          searchword_list.append([split_phrase, line[1]])
      return searchword_list
 
 def searchword_searchphrase_dict(csvfile):
@@ -75,16 +74,16 @@ def vlookup_similar(lookup_list, lookup_dictionary):
                print(match_result/100)
                match_start = datetime.now()
 
-          for searchword, output in searchphrase[0].items():
+          for searchword in searchphrase[0]:
                match_dbc = { "description":[0], "brand":[0], "category":[0] }
                for description, brand_category_sku in lookup_dictionary.items():
                     split_name = []
                     split_name = str.split(description)
-                    for partial_description in split_name:
-                         description_match_ratio = difflib.SequenceMatcher(None, searchword, partial_description).ratio()
-                         if description_match_ratio > 0.90:
+                    for partial_name in split_name:
+                         name_match_ratio = difflib.SequenceMatcher(None, searchword, partial_name).ratio()
+                         if name_match_ratio > 0.90:
                               # Found SKU
-                              for key, value in searchphrase[0].items():
+                              for key in searchphrase[0]:
                                    split_category = []
                                    split_category = str.split(brand_category_sku[1])
                                    for partial_category in split_category:
@@ -101,7 +100,9 @@ def vlookup_similar(lookup_list, lookup_dictionary):
                                              if not key in match_dbc["category"][1:] and not key in match_dbc["brand"][1:]:
                                                   match_dbc["brand"][0] = 1
                                                   match_dbc["brand"].append(key)
-                                   for partial_description in split_name:
+                                   split_description = []
+                                   split_description = str.split(description)
+                                   for partial_description in split_description:
                                         description_match_ratio = difflib.SequenceMatcher(None, key, partial_description).ratio()
                                         if description_match_ratio > 0.90:
                                              if not key in match_dbc["category"][1:] and not key in match_dbc["brand"][1:] and not key in match_dbc["description"][1:]:
@@ -214,7 +215,7 @@ def vlookup_similar(lookup_list, lookup_dictionary):
 ##          write_to_csv(residuen_csv, matched_phrase)
 
 lookup_dict = create_dictionary_from_csv(lookup_csv)
-searchword_list = searchword_searchphrase_dict(to_match_csv)
+searchword_list = create_searchword_list(to_match_csv)
 start = datetime.now()
 print(start)
 vlookup_similar(searchword_list, lookup_dict)
