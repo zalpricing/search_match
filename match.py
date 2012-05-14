@@ -1,8 +1,6 @@
-# Fancy Matcher 2.4 - Sebastian Oehlschläger, Torsten Kunz
+# Fancy Matcher 2.5 - Sebastian Oehlschläger, Torsten Kunz
 
-import csv
-import sys
-import difflib
+import csv, sys, difflib
 from datetime import datetime
  
 ### write to csv
@@ -240,5 +238,3 @@ vlookup_similar(searchword_list, lookup_dict)
 stop = datetime.now()
 result = stop - start
 print(result)
-
-
