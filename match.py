@@ -1,6 +1,6 @@
-# Fancy Matcher 2.5 - Sebastian Oehlschläger, Torsten Kunz
+# Fancy Matcher 2.6 - Sebastian Oehlschläger, Torsten Kunz
 
-import csv, sys, difflib
+import csv, sys, difflib, multiprocessing
 from datetime import datetime
  
 ### write to csv
@@ -23,8 +23,8 @@ def create_dictionary_from_csv(csvfile):
      for line in reader:
           if line[1] in lookup_dict and line[2] in lookup_dict[line[1]][0]:
                lookup_dict[line[1]].append(line[0])
-          else :
-               key_value = {line[1]:[line[2],line[3]+' '+line[4],line[0]]}
+          else:
+               key_value = {line[1].lower():[line[2].lower(),line[3].lower()+' '+line[4].lower()+' '+line[5].lower()+' '+line[6].lower(),line[0]]}
                lookup_dict.update(key_value)
      return lookup_dict
 
@@ -33,9 +33,8 @@ def create_searchword_list(csvfile):
      searchword_list = []
      for line in reader:
           split_phrase = []
-          split_phrase = str.split(line[0])
-          searchword_list.append([split_phrase, line[1]])
-#          print(searchword_list)
+          split_phrase = str.split(line[0].lower())
+          searchword_list.append([split_phrase, line[1].lower()])
      return searchword_list
 
 def searchword_searchphrase_dict(csvfile):
@@ -58,7 +57,7 @@ def vlookup_similar(lookup_list, lookup_dictionary):
               'category & description': {'complete match':'complete_cat_desc.csv','incomplete match':'incomplete_cat_desc.csv'},
               'only description': {'complete match': 'complete_desc.csv', 'incomplete match':'incomplete_desc.csv'}}
      
-     header = [["SKU", "Match Type", "Match Count", "Search Volume", "Search Phrase", "Match Array", "Product Description", "Brand & Category"]]
+     header = [["SKU", "Match Type", "Match Count", "Search Volume", "Search Phrase", "desc_count", "desc", "cat_count", "cat", "brand_count", "brand", "Product Description", "brand_db", "cat_db"]]
 
      for key, value in files.items():
           for key, file in value.items():
@@ -75,7 +74,7 @@ def vlookup_similar(lookup_list, lookup_dictionary):
                print(match_result/100)
                match_start = datetime.now()
 
-          for searchword in searchphrase[0]:     
+          for searchword in searchphrase[0]:
 
                for description, brand_category_sku in lookup_dictionary.items():
                     match_dbc = { "description":[0], "brand":[0], "category":[0] }
@@ -85,7 +84,8 @@ def vlookup_similar(lookup_list, lookup_dictionary):
                     for partial_name in split_name:
                          name_match_ratio = difflib.SequenceMatcher(None, searchword, partial_name).ratio()
                          if name_match_ratio > 0.85:
-                              # Found SKU
+
+### Found SKU ###
 
                               for key in searchphrase[0]:
 
@@ -94,8 +94,9 @@ def vlookup_similar(lookup_list, lookup_dictionary):
                                    for partial_category in split_category:
                                         category_match_ratio = difflib.SequenceMatcher(None, key, partial_category).ratio()
                                         if category_match_ratio > 0.75:
+                                             match_dbc["category"][0] = 0
                                              if not key in match_dbc["category"][1:]:
-                                                  match_dbc["category"][0] = 1
+                                                  match_dbc["category"][0] += 1
                                                   match_dbc["category"].append(key)
 
 
@@ -105,31 +106,32 @@ def vlookup_similar(lookup_list, lookup_dictionary):
                                    for partial_brand in split_brand:
                                         brand_match_ratio = difflib.SequenceMatcher(None, key, partial_brand).ratio()
                                         if brand_match_ratio > 0.75:
+                                             match_dbc["brand"][0] = 0
                                              if not key in match_dbc["category"][1:] and not key in match_dbc["brand"][1:]:
-                                                  match_dbc["brand"][0] = 1
+                                                  match_dbc["brand"][0] += 1
                                                   match_dbc["brand"].append(key)
 
                                    split_description = []
                                    split_description = str.split(description)
-                                   # desc_m_r_list = []
+# desc_m_r_list = []
                                    for partial_description in split_description:
                                         description_match_ratio = difflib.SequenceMatcher(None, key, partial_description).ratio()
-                                   #     desc_m_r_list.append(description_match_ratio)
+#     desc_m_r_list.append(description_match_ratio)
                                         if description_match_ratio > 0.85:
+                                             match_dbc["description"][0] = 0
                                              if not key in match_dbc["category"][1:] and not key in match_dbc["brand"][1:] and not key in match_dbc["description"][1:]:
-                                                  match_dbc["description"][0] = 1
-                                                  match_dbc["description"].append(key+'-'+partial_description+'-'+str(description_match_ratio))
+                                                  match_dbc["description"][0] += 1
+                                                  match_dbc["description"].append(key)    ## +'-'+partial_description+'-'+str(description_match_ratio)
                                         else:
                                              pass
-
                               match_type = "empty"
-                              if match_dbc["description"][0] == 1 and match_dbc["category"][0] == 1 and match_dbc["brand"][0] == 1:
+                              if match_dbc["description"][0] > 0 and match_dbc["category"][0] > 0 and match_dbc["brand"][0] > 0:
                                    match_type = "brand, category & description"
-                              if match_dbc["description"][0] == 1 and match_dbc["category"][0] == 0 and match_dbc["brand"][0] == 1:
+                              if match_dbc["description"][0] > 0 and match_dbc["category"][0] == 0 and match_dbc["brand"][0] > 0:
                                    match_type = "brand & description"
-                              if match_dbc["description"][0] == 1 and match_dbc["category"][0] == 1 and match_dbc["brand"][0] == 0:
+                              if match_dbc["description"][0] > 0 and match_dbc["category"][0] > 0 and match_dbc["brand"][0] == 0:
                                    match_type = "category & description"
-                              if match_dbc["description"][0] == 1 and match_dbc["category"][0] == 0 and match_dbc["brand"][0] == 0:
+                              if match_dbc["description"][0] > 0 and match_dbc["category"][0] == 0 and match_dbc["brand"][0] == 0:
                                    match_type = "only description"
                               if ((len(match_dbc["description"]) - 1) + (len(match_dbc["brand"]) - 1) + (len(match_dbc["category"]) - 1) ) >= len(searchphrase[0]):
                                    match_count = "complete match"
@@ -140,12 +142,13 @@ def vlookup_similar(lookup_list, lookup_dictionary):
                               for word in searchphrase[0]:
                                    searched_words.append(word)
                               final_phrase = ' '.join(searched_words)
-                              output = [[brand_category_sku[2], match_type, match_count, searchphrase[1], final_phrase, match_dbc, description, brand_category_sku[:2]]]
+                              output = [[brand_category_sku[2], match_type, match_count, searchphrase[1], final_phrase, len(match_dbc["description"][1:]), match_dbc["description"][1:], len(match_dbc["category"][1:]), match_dbc["category"][1:], len(match_dbc["brand"][1:]), match_dbc["brand"][1:], description, brand_category_sku[0], brand_category_sku[1]]] # match dbc auftrennen
                               if not match_type == "empty":
                                    write_to_csv(files[match_type][match_count], output)
                               counter = counter + 1
                          else:
                               pass
+
 
 ##                    ### No Product Match    ###
 ##                    # Check Category & Brand!
@@ -227,6 +230,10 @@ def vlookup_similar(lookup_list, lookup_dictionary):
 ##                              output = "Residuals"
 ##          matched_phrase = [[phrase, output]]
 ##          write_to_csv(residuen_csv, matched_phrase)
+
+if __name__ == '__main__':
+     p = multiprocessing.Process(target=vlookup_similar, args=(15,))
+     p.start()
 
 lookup_dict = create_dictionary_from_csv(lookup_csv)
 searchword_list = create_searchword_list(to_match_csv)
